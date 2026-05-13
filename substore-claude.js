@@ -190,7 +190,7 @@ function buildCustomFrontRules() {
         // 用户白名单
         "DOMAIN,msls.club,DIRECT",
         "DOMAIN-SUFFIX,msls.club,DIRECT",
-        "DOMAIN,raw.githubusercontent.com,DIRECT",
+        `DOMAIN,raw.githubusercontent.com,${PROXY_GROUPS.SELECT}`,
 
         // IPv6 全局阻断 + 局域网直连
         "IP-CIDR6,::/0,REJECT,no-resolve",
