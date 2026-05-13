@@ -22,7 +22,6 @@ function buildFeatureFlags(args) {
         ipv6: "ipv6Enabled",
         full: "fullConfig",
         keepalive: "keepAliveEnabled",
-        fakeip: "fakeIPEnabled",
         quic: "quicEnabled"
     };
     const flags = Object.entries(spec).reduce((acc, [k, v]) => {
@@ -30,13 +29,15 @@ function buildFeatureFlags(args) {
         return acc;
     }, {});
     flags.countryThreshold = parseNumber(args.threshold, 0);
+    // tun 默认开启，通过 ?tun=false 关闭（与其他默认 false 的开关相反）
+    flags.tunEnabled = typeof args.tun === 'undefined' ? true : parseBool(args.tun);
     return flags;
 }
 
 const rawArgs = typeof $arguments !== 'undefined' ? $arguments : {};
 const {
     loadBalance, landing, ipv6Enabled, fullConfig,
-    keepAliveEnabled, fakeIPEnabled, quicEnabled, countryThreshold
+    keepAliveEnabled, quicEnabled, tunEnabled, countryThreshold
 } = buildFeatureFlags(rawArgs);
 
 function getCountryGroupNames(info, min) {
@@ -87,28 +88,50 @@ function buildBaseLists({ landing, lowCost, countryGroupNames }) {
 }
 
 const ruleProviders = {
-    "ADBlock": { type: "http", behavior: "domain", format: "mrs", interval: 86400,
-        url: "https://adrules.top/adrules-mihomo.mrs", path: "./ruleset/ADBlock.mrs" },
-    "SogouInput": { type: "http", behavior: "classical", format: "text", interval: 86400,
-        url: "https://ruleset.skk.moe/Clash/non_ip/sogouinput.txt", path: "./ruleset/SogouInput.txt" },
-    "StaticResources": { type: "http", behavior: "domain", format: "text", interval: 86400,
-        url: "https://ruleset.skk.moe/Clash/domainset/cdn.txt", path: "./ruleset/StaticResources.txt" },
-    "CDNResources": { type: "http", behavior: "classical", format: "text", interval: 86400,
-        url: "https://ruleset.skk.moe/Clash/non_ip/cdn.txt", path: "./ruleset/CDNResources.txt" },
-    "TikTok": { type: "http", behavior: "classical", format: "text", interval: 86400,
-        url: "https://gcore.jsdelivr.net/gh/powerfullz/override-rules@master/ruleset/TikTok.list", path: "./ruleset/TikTok.list" },
-    "EHentai": { type: "http", behavior: "classical", format: "text", interval: 86400,
-        url: "https://gcore.jsdelivr.net/gh/powerfullz/override-rules@master/ruleset/EHentai.list", path: "./ruleset/EHentai.list" },
-    "SteamFix": { type: "http", behavior: "classical", format: "text", interval: 86400,
-        url: "https://gcore.jsdelivr.net/gh/powerfullz/override-rules@master/ruleset/SteamFix.list", path: "./ruleset/SteamFix.list" },
-    "GoogleFCM": { type: "http", behavior: "classical", format: "text", interval: 86400,
-        url: "https://gcore.jsdelivr.net/gh/powerfullz/override-rules@master/ruleset/FirebaseCloudMessaging.list", path: "./ruleset/FirebaseCloudMessaging.list" },
-    "AdditionalFilter": { type: "http", behavior: "classical", format: "text", interval: 86400,
-        url: "https://gcore.jsdelivr.net/gh/powerfullz/override-rules@master/ruleset/AdditionalFilter.list", path: "./ruleset/AdditionalFilter.list" },
-    "AdditionalCDNResources": { type: "http", behavior: "classical", format: "text", interval: 86400,
-        url: "https://gcore.jsdelivr.net/gh/powerfullz/override-rules@master/ruleset/AdditionalCDNResources.list", path: "./ruleset/AdditionalCDNResources.list" },
-    "Crypto": { type: "http", behavior: "classical", format: "text", interval: 86400,
-        url: "https://gcore.jsdelivr.net/gh/powerfullz/override-rules@master/ruleset/Crypto.list", path: "./ruleset/Crypto.list" },
+    "ADBlock": {
+        type: "http", behavior: "domain", format: "mrs", interval: 86400,
+        url: "https://adrules.top/adrules-mihomo.mrs", path: "./ruleset/ADBlock.mrs"
+    },
+    "SogouInput": {
+        type: "http", behavior: "classical", format: "text", interval: 86400,
+        url: "https://ruleset.skk.moe/Clash/non_ip/sogouinput.txt", path: "./ruleset/SogouInput.txt"
+    },
+    "StaticResources": {
+        type: "http", behavior: "domain", format: "text", interval: 86400,
+        url: "https://ruleset.skk.moe/Clash/domainset/cdn.txt", path: "./ruleset/StaticResources.txt"
+    },
+    "CDNResources": {
+        type: "http", behavior: "classical", format: "text", interval: 86400,
+        url: "https://ruleset.skk.moe/Clash/non_ip/cdn.txt", path: "./ruleset/CDNResources.txt"
+    },
+    "TikTok": {
+        type: "http", behavior: "classical", format: "text", interval: 86400,
+        url: "https://gcore.jsdelivr.net/gh/powerfullz/override-rules@master/ruleset/TikTok.list", path: "./ruleset/TikTok.list"
+    },
+    "EHentai": {
+        type: "http", behavior: "classical", format: "text", interval: 86400,
+        url: "https://gcore.jsdelivr.net/gh/powerfullz/override-rules@master/ruleset/EHentai.list", path: "./ruleset/EHentai.list"
+    },
+    "SteamFix": {
+        type: "http", behavior: "classical", format: "text", interval: 86400,
+        url: "https://gcore.jsdelivr.net/gh/powerfullz/override-rules@master/ruleset/SteamFix.list", path: "./ruleset/SteamFix.list"
+    },
+    "GoogleFCM": {
+        type: "http", behavior: "classical", format: "text", interval: 86400,
+        url: "https://gcore.jsdelivr.net/gh/powerfullz/override-rules@master/ruleset/FirebaseCloudMessaging.list", path: "./ruleset/FirebaseCloudMessaging.list"
+    },
+    "AdditionalFilter": {
+        type: "http", behavior: "classical", format: "text", interval: 86400,
+        url: "https://gcore.jsdelivr.net/gh/powerfullz/override-rules@master/ruleset/AdditionalFilter.list", path: "./ruleset/AdditionalFilter.list"
+    },
+    "AdditionalCDNResources": {
+        type: "http", behavior: "classical", format: "text", interval: 86400,
+        url: "https://gcore.jsdelivr.net/gh/powerfullz/override-rules@master/ruleset/AdditionalCDNResources.list", path: "./ruleset/AdditionalCDNResources.list"
+    },
+    "Crypto": {
+        type: "http", behavior: "classical", format: "text", interval: 86400,
+        url: "https://gcore.jsdelivr.net/gh/powerfullz/override-rules@master/ruleset/Crypto.list", path: "./ruleset/Crypto.list"
+    },
 
     // ========== 新增 ==========
     "ClaudeRules": {
@@ -155,8 +178,8 @@ const baseRules = [
     `GEOSITE,PRIVATE,${PROXY_GROUPS.DIRECT}`,
     "GEOIP,NETFLIX,Netflix,no-resolve",
     "GEOIP,TELEGRAM,Telegram,no-resolve",
-    `GEOIP,CN,${PROXY_GROUPS.DIRECT}`,
-    `GEOIP,PRIVATE,${PROXY_GROUPS.DIRECT}`,
+    `GEOIP,CN,${PROXY_GROUPS.DIRECT},no-resolve`,
+    `GEOIP,PRIVATE,${PROXY_GROUPS.DIRECT},no-resolve`,
     "DST-PORT,22,SSH(22端口)",
     `MATCH,${PROXY_GROUPS.SELECT}`
 ];
@@ -236,35 +259,46 @@ const snifferConfig = {
     "skip-domain": ["Mijia Cloud", "dlg.io.mi.com", "+.push.apple.com"]
 };
 
-function buildDnsConfig({ mode, fakeIpFilter }) {
-    const config = {
-        "enable": true,
-        "ipv6": ipv6Enabled,
-        "prefer-h3": true,
-        "enhanced-mode": mode,
-        "default-nameserver": ["119.29.29.29", "223.5.5.5"],
-        "nameserver": ["system", "223.5.5.5", "119.29.29.29", "180.184.1.1"],
-        "fallback": [
-            "quic://dns0.eu",
-            "https://dns.cloudflare.com/dns-query",
-            "https://dns.sb/dns-query",
-            "tcp://208.67.222.222",
-            "tcp://8.26.56.2"
-        ],
-        "proxy-server-nameserver": ["https://dns.alidns.com/dns-query", "tls://dot.pub"]
-    };
-    if (fakeIpFilter) config["fake-ip-filter"] = fakeIpFilter;
-    return config;
-}
-const dnsConfig = buildDnsConfig({ mode: "redir-host" });
-const dnsConfigFakeIp = buildDnsConfig({
-    mode: "fake-ip",
-    fakeIpFilter: [
-        "geosite:private", "geosite:connectivity-check", "geosite:cn",
-        "Mijia Cloud", "dig.io.mi.com", "localhost.ptlogin2.qq.com",
-        "*.icloud.com", "*.stun.*.*", "*.stun.*.*.*"
-    ]
-});
+// fake-ip 防泄露 DNS:
+//  - 国外域名 → fake-ip → 不本地解析 → 由代理端解析（无泄露）
+//  - 命中 fake-ip-filter 的域名（CN、私有、连通性检测等）→ 走 nameserver(DoH) 真解析
+//  - bootstrap 同时含 TLS DNS 和国内明文，前者优先；前者不通时回落明文，避免 DNS 全断
+const dnsConfig = {
+    "enable": true,
+    "ipv6": ipv6Enabled,
+    "prefer-h3": false,
+    "enhanced-mode": "fake-ip",
+    "fake-ip-range": "198.18.0.1/16",
+    "fake-ip-filter": [
+        "geosite:private",
+        "localhost",
+        "*.local",
+        "geosite:cn",
+        "*.cn",
+        "geosite:connectivity-check",
+        "+.push.apple.com",
+        "*.stun.*.*",
+        "*.stun.*.*.*",
+        "Mijia Cloud",
+        "*.mijia.com",
+        "localhost.ptlogin2.qq.com"
+    ],
+    "default-nameserver": ["tls://1.1.1.1", "tls://8.8.8.8", "223.5.5.5", "119.29.29.29"],
+    "nameserver": [
+        "https://dns.alidns.com/dns-query",
+        "https://doh.pub/dns-query"
+    ],
+    "fallback": [
+        "https://dns.cloudflare.com/dns-query",
+        "https://dns.sb/dns-query"
+    ],
+    "fallback-filter": {
+        "geoip": true,
+        "geoip-code": "CN",
+        "ipcidr": ["240.0.0.0/4"]
+    },
+    "proxy-server-nameserver": ["https://dns.alidns.com/dns-query", "tls://dot.pub"]
+};
 
 const geoxURL = {
     "geoip": "https://gcore.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geoip.dat",
@@ -459,7 +493,6 @@ function main(config) {
         "geodata-loader": "standard",
         "external-controller": ":9999",
         "disable-keep-alive": !keepAliveEnabled,
-        "tun": { "enable": false },
         "profile": { "store-selected": true }
     });
 
@@ -468,7 +501,17 @@ function main(config) {
         "rule-providers": ruleProviders,
         "rules": finalRules,
         "sniffer": snifferConfig,
-        "dns": fakeIPEnabled ? dnsConfigFakeIp : dnsConfig,
+        "dns": dnsConfig,
+        // TUN 默认开启，可通过 ?tun=false 关闭以便排查冲突（公司 VPN/WSL/自建 DNS 等场景）。
+        // 注：未启用 strict-route——它在部分 mihomo 封装上会误杀 mihomo 自身的
+        // DoH/bootstrap 出站，导致 DNS 全断。先用基础 TUN 跑通，验证后再考虑加固。
+        "tun": tunEnabled ? {
+            "enable": true,
+            "stack": "mixed",
+            "dns-hijack": ["any:53"],
+            "auto-route": true,
+            "auto-detect-interface": true
+        } : { "enable": false },
         "geodata-mode": true,
         "geox-url": geoxURL,
     });
