@@ -223,16 +223,39 @@ function buildCustomFrontRules() {
         `DOMAIN-KEYWORD,anthropic,${CLAUDE_RELAY_GROUP}`,
         `DOMAIN-KEYWORD,claude,${CLAUDE_RELAY_GROUP}`,
         `DOMAIN-SUFFIX,claude.ai,${CLAUDE_RELAY_GROUP}`,
+        // clau.de 不含 "claude" 子串，keyword 兜不住，单独列
+        `DOMAIN-SUFFIX,clau.de,${CLAUDE_RELAY_GROUP}`,
         `DOMAIN-SUFFIX,accounts.google.com,${CLAUDE_RELAY_GROUP}`,
+
+        // [B2] 第三方遥测 / 风控 / 客服 widget —— 与 Claude 出口保持同一 IP，避免指纹不一致
+        `DOMAIN-SUFFIX,statsigapi.net,${CLAUDE_RELAY_GROUP}`,
+        `DOMAIN-SUFFIX,intercom.io,${CLAUDE_RELAY_GROUP}`,
+        `DOMAIN-SUFFIX,intercomcdn.com,${CLAUDE_RELAY_GROUP}`,
+        `DOMAIN-SUFFIX,usefathom.com,${CLAUDE_RELAY_GROUP}`,
 
         // [C] 哨兵 / WebRTC 防泄露
         `DOMAIN-SUFFIX,sentry.io,${CLAUDE_RELAY_GROUP}`,
+
+        // [B3] 兜底通配(geosite + keyword)——漏配域名时仍锁定到 Claude 中转出口，
+        //      优先级高于下方所有通用规则,避免被 GEOSITE,CN 等覆盖。
+        `GEOSITE,ANTHROPIC,${CLAUDE_RELAY_GROUP}`,
+        `DOMAIN-KEYWORD,datadog,${CLAUDE_RELAY_GROUP}`,
+        `DOMAIN-KEYWORD,sentry,${CLAUDE_RELAY_GROUP}`,
+        `DOMAIN-KEYWORD,sift,${CLAUDE_RELAY_GROUP}`,
+        `GEOSITE,CATEGORY-NTP,${CLAUDE_RELAY_GROUP}`,
+
         "DOMAIN-KEYWORD,webrtc,REJECT",
         "DST-PORT,3478,REJECT",
         "DST-PORT,19302,REJECT",
 
         // [E] 高速需求(github 不走 Claude 中转)
         `DOMAIN-KEYWORD,github,${PROXY_GROUPS.SELECT}`,
+
+        // [F] Anthropic 自有网段 / ASN 兜底(域名规则万一未命中时仍走对出口)
+        //     no-resolve: 只按连接目标 IP 匹配，不触发反向 DNS。
+        //     IPv6 段省略——脚本上方 IP-CIDR6,::/0,REJECT 已全局封锁 v6。
+        `IP-CIDR,160.79.104.0/21,${CLAUDE_RELAY_GROUP},no-resolve`,
+        `IP-ASN,399358,${CLAUDE_RELAY_GROUP},no-resolve`,
 
         // 中国大陆站点直连
         `RULE-SET,ChinaSites,${PROXY_GROUPS.DIRECT}`,
