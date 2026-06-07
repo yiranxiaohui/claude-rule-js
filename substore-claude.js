@@ -286,10 +286,14 @@ const snifferConfig = {
 //  - 国外域名 → fake-ip → 不本地解析 → 由代理端解析（无泄露）
 //  - 命中 fake-ip-filter 的域名（CN、私有、连通性检测等）→ 走 nameserver(DoH) 真解析
 //  - bootstrap 同时含 TLS DNS 和国内明文，前者优先；前者不通时回落明文，避免 DNS 全断
+//  - respect-rules: DNS 查询本身按 rules 走代理。claude.ai 命中 Claude-Safe-Relay 时，
+//    解析它的 DNS 请求也从中转节点发出 → 解析出口 = 出口 IP，消除 DNS/IP 地理不一致。
+//    依赖 proxy-server-nameserver 解析节点自身地址以避免回环（下方已配置）。
 const dnsConfig = {
     "enable": true,
     "ipv6": ipv6Enabled,
     "prefer-h3": false,
+    "respect-rules": true,
     "enhanced-mode": "fake-ip",
     "fake-ip-range": "198.18.0.1/16",
     "fake-ip-filter": [
